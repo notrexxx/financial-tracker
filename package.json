@@ -1,0 +1,28 @@
+{
+  "name": "financial-tracker",
+  "version": "1.0.0",
+  "description": "A wealth and budget monitoring dashboard engineered to ingest thousands of transactions, calculate historical trends via advanced SQL aggregation, and fetch real-time market data through background task scheduling.",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -c \"cyan,magenta\" -n \"WEB,API\" \"npm run dev -w apps/web\" \"npm run start:dev -w apps/api\"",
+    "build": "npm run build -w apps/web && npm run build -w apps/api\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/notrexxx/financial-tracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/notrexxx/financial-tracker/issues"
+  },
+  "homepage": "https://github.com/notrexxx/financial-tracker#readme",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
