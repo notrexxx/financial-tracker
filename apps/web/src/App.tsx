@@ -3,7 +3,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Wallet, TrendingUp, ArrowDownRight, Activity } from 'lucide-react';
 import { fetchDashboardMetrics } from './lib/api';
 
-// TODO: Replace with the actual UUID from your Neon Postgres database
 const DEMO_USER_ID = 'd0b74a2f-fe21-4a20-9de2-c32faec848b5';
 
 function App() {
@@ -115,7 +114,8 @@ function App() {
                   cursor={{ fill: '#1e293b', opacity: 0.4 }}
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
                   itemStyle={{ fontWeight: 500 }}
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
+                  // Fix: Relaxed strict typing to bypass Recharts internal generic limitations
+                  formatter={(value: any) => [`$${Number(value).toLocaleString()}`, '']}
                 />
                 <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }}/>
                 <Bar dataKey="totalIncome" name="Income" fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -147,7 +147,8 @@ function App() {
                 </Pie>
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, 'Amount']}
+                  // Fix: Relaxed strict typing to bypass Recharts internal generic limitations
+                  formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'Amount']}
                 />
                 <Legend iconType="circle" layout="vertical" verticalAlign="bottom" />
               </PieChart>
