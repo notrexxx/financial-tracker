@@ -5,23 +5,26 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // Enable global validation strictly checking our DTOs
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Strips out properties that do not have any decorators
-      forbidNonWhitelisted: true, // Throws an error if non-whitelisted properties are provided
-      transform: true, // Automatically transforms payloads to be objects typed according to their DTO classes
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
-  // Enable CORS so our React frontend on port 5173 can talk to our API on port 3000
+  // Security: Dynamic CORS configuration based on the environment
+  const isProduction = process.env.NODE_ENV === 'production';
+  const frontendUrl = process.env.FRONTEND_URL;
+
   app.enableCors({
-    origin: 'http://localhost:5173',
+    // If in production, strictly allow only the Vercel URL. Otherwise, allow localhost.
+    origin: isProduction && frontendUrl ? frontendUrl : 'http://localhost:5173',
     credentials: true,
   });
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`🚀 API Engine running on http://localhost:${port}`);
+  console.log(`🚀 API Engine running on port ${port}`);
 }
 bootstrap();

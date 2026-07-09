@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: financial-tracker-api
+    env: node
+    # Since we are in a monorepo, we must explicitly build only the API workspace
+    buildCommand: npm install && npm run build -w apps/api
+    # Run the compiled JavaScript from the dist folder
+    startCommand: npm run start:prod -w apps/api
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # We leave these values blank in the file so they aren't exposed in GitHub.
+      # Render will prompt you to enter them securely in its dashboard.
+      - key: DATABASE_URL
+        sync: false 
+      - key: FRONTEND_URL
+        sync: false
