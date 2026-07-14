@@ -28,7 +28,11 @@ import { TasksModule } from './tasks/tasks.module';
           type: 'postgres',
           url: databaseUrl,
           entities: [User, Category, Transaction, ExchangeRate],
-          synchronize: configService.get<string>('NODE_ENV') === 'development',
+          
+          // CRITICAL SECURITY UPDATE: We now strictly rely on Migrations across ALL environments.
+          // This prevents TypeORM from accidentally dropping tables or columns.
+          synchronize: false, 
+          
           ssl: {
             rejectUnauthorized: false,
           },

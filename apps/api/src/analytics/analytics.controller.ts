@@ -6,11 +6,11 @@ import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
-  // PUBLIC ROUTE: Used for portfolio demo mode (no authentication needed)
   @Get('demo-dashboard')
   async getDemoDashboard() {
-    // We point this to your specific Clerk ID that is linked to your 10,000 transactions
-    const demoUserId = 'user_3GHoR6yTlblgtvsIJFtdBhZtEcK'; 
+    const demoUserId = 'demo-guest-user-123';
+    
+    await this.analyticsService.autoProvisionUser(demoUserId);
     
     const [trends, categoryBreakdown] = await Promise.all([
       this.analyticsService.getMonthlyTrends(demoUserId),
@@ -23,11 +23,13 @@ export class AnalyticsController {
     };
   }
 
-  // PROTECTED ROUTE: Strictly requires a valid Clerk JWT
   @UseGuards(ClerkAuthGuard)
   @Get('dashboard')
   async getDashboardMetrics(@Req() req: any) {
     const secureUserId = req.user.id;
+    
+    await this.analyticsService.autoProvisionUser(secureUserId);
+
     const [trends, categoryBreakdown] = await Promise.all([
       this.analyticsService.getMonthlyTrends(secureUserId),
       this.analyticsService.getCategoryBreakdown(secureUserId),
