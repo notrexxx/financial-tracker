@@ -5,6 +5,7 @@ import { faker } from '@faker-js/faker';
 import { Transaction } from '../database/entities/transaction.entity';
 import { User } from '../database/entities/user.entity';
 import { Category, CategoryType } from '../database/entities/category.entity';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class AnalyticsService {
@@ -17,11 +18,12 @@ export class AnalyticsService {
     private userRepo: Repository<User>,
     @InjectRepository(Category)
     private categoryRepo: Repository<Category>,
+    // Inject our new Redis Cache layer
+    private redisService: RedisService,
   ) {}
 
   // --- JUST-IN-TIME PROVISIONING ENGINE ---
   async autoProvisionUser(userId: string) {
-    // 1. Check if user exists in Postgres. If not, auto-register them.
     let user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       this.logger.log(`Provisioning new user identity in database: ${userId}`);
@@ -33,13 +35,11 @@ export class AnalyticsService {
       await this.userRepo.save(user);
     }
 
-    // 2. If the user already has transactions, skip the seeder to save compute.
     const txCount = await this.transactionRepo.count({ where: { user: { id: userId } } });
     if (txCount > 0) return;
 
     this.logger.log(`Generating random financial dataset for user: ${userId}`);
 
-    // 3. Ensure global categories exist
     let categories = await this.categoryRepo.find();
     if (categories.length === 0) {
       categories = await this.categoryRepo.save([
@@ -51,7 +51,6 @@ export class AnalyticsService {
       ]);
     }
 
-    // 4. Generate 1,200 unique transactions for this specific user
     const transactions = [];
     for (let i = 0; i < 1200; i++) {
       const randomCategory = categories[Math.floor(Math.random() * categories.length)];
@@ -66,13 +65,24 @@ export class AnalyticsService {
       });
     }
 
-    // Bulk insert is virtually instant in Postgres
     await this.transactionRepo.insert(transactions);
     this.logger.log(`Successfully seeded 1,200 transactions for ${userId}`);
   }
 
-  // --- UPDATED ANALYTICS LOGIC WITH PERFECT SQL MAPPING ---
+  // --- REDIS-POWERED ANALYTICS LOGIC ---
   async getMonthlyTrends(userId: string) {
+    const cacheKey = `analytics:trends:${userId}`;
+    
+    // 1. Check Redis Memory First (Takes ~2ms)
+    const cachedData = await this.redisService.get(cacheKey);
+    if (cachedData) {
+      this.logger.log(`[CACHE HIT] Serving Monthly Trends for ${userId} from Redis`);
+      return cachedData;
+    }
+
+    this.logger.log(`[CACHE MISS] Calculating Monthly Trends for ${userId} via Postgres`);
+    
+    // 2. Fallback to Postgres if cache is empty
     const rawData = await this.transactionRepo
       .createQueryBuilder('transaction')
       .select("TO_CHAR(transaction.date, 'Mon YYYY')", 'month')
@@ -80,27 +90,41 @@ export class AnalyticsService {
       .addSelect("SUM(CASE WHEN category.type = 'EXPENSE' THEN transaction.amount ELSE 0 END)", 'totalExpense')
       .addSelect("MIN(transaction.date)", 'sortDate') 
       .innerJoin('transaction.category', 'category')
-      // FIX: Map strictly to the generated underlying snake_case database foreign key
       .where('transaction.user_id = :userId', { userId })
       .groupBy("TO_CHAR(transaction.date, 'Mon YYYY')")
       .orderBy('"sortDate"', 'ASC') 
       .getRawMany();
 
-    return rawData.map(item => ({
+    const formattedData = rawData.map(item => ({
       month: item.month,
       totalIncome: parseFloat(item.totalIncome) || 0,
       totalExpense: parseFloat(item.totalExpense) || 0,
     }));
+
+    // 3. Save the result in Redis for 5 minutes (300 seconds)
+    await this.redisService.set(cacheKey, formattedData, 300);
+    return formattedData;
   }
 
   async getCategoryBreakdown(userId: string) {
+    const cacheKey = `analytics:categories:${userId}`;
+    
+    // 1. Check Redis Memory First
+    const cachedData = await this.redisService.get(cacheKey);
+    if (cachedData) {
+      this.logger.log(`[CACHE HIT] Serving Category Breakdown for ${userId} from Redis`);
+      return cachedData;
+    }
+
+    this.logger.log(`[CACHE MISS] Calculating Category Breakdown for ${userId} via Postgres`);
+
+    // 2. Fallback to Postgres
     const rawData = await this.transactionRepo
       .createQueryBuilder('transaction')
       .select('category.name', 'name')
       .addSelect('category.color', 'color')
       .addSelect('SUM(transaction.amount)', 'totalAmount')
       .innerJoin('transaction.category', 'category')
-      // FIX: Map strictly to the generated underlying snake_case database foreign key
       .where('transaction.user_id = :userId', { userId })
       .andWhere("category.type = 'EXPENSE'")
       .groupBy('category.name')
@@ -108,10 +132,14 @@ export class AnalyticsService {
       .orderBy('"totalAmount"', 'DESC')
       .getRawMany();
 
-    return rawData.map(item => ({
+    const formattedData = rawData.map(item => ({
       name: item.name,
       color: item.color,
       totalAmount: parseFloat(item.totalAmount) || 0,
     }));
+
+    // 3. Save the result in Redis for 5 minutes (300 seconds)
+    await this.redisService.set(cacheKey, formattedData, 300);
+    return formattedData;
   }
 }
