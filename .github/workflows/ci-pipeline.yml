@@ -1,0 +1,31 @@
+name: Enterprise CI Pipeline
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  build-and-test:
+    name: Build & Verify Monorepo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Compile NestJS API (Check for TS errors)
+        run: npm run build --workspace=apps/api
+        
+      - name: Compile React Frontend (Check for TS errors)
+        run: npm run build --workspace=apps/web
