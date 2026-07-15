@@ -6,6 +6,15 @@ import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
+  // --- NEW: SENTRY CRASH TEST ENDPOINT ---
+  // Hitting this route will instantly trigger a simulated critical failure
+  // so we can verify the Sentry flight recorder is catching errors.
+  @Get('crash-test')
+  triggerError() {
+    throw new Error('SENTRY FLIGHT RECORDER TEST: The API just experienced a simulated critical failure!');
+  }
+
+  // --- EXISTING ROUTES ---
   @Get('demo-dashboard')
   async getDemoDashboard() {
     const demoUserId = 'demo-guest-user-123';

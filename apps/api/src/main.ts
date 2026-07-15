@@ -1,30 +1,27 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import * as Sentry from '@sentry/nestjs';
+import { nodeProfilingIntegration } from '@sentry/profiling-node';
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '../../.env' });
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  integrations: [
+    nodeProfilingIntegration(),
+  ],
+  tracesSampleRate: 1.0, 
+  profilesSampleRate: 1.0,
+});
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-
-  // Security: Dynamic CORS configuration based on the environment
-  const isProduction = process.env.NODE_ENV === 'production';
-  const frontendUrl = process.env.FRONTEND_URL;
 
   app.enableCors({
-    // If in production, strictly allow only the Vercel URL. Otherwise, allow localhost.
-    origin: isProduction && frontendUrl ? frontendUrl : 'http://localhost:5173',
+    origin: '*', 
     credentials: true,
   });
 
-  const port = process.env.PORT || 3000;
-  await app.listen(port);
-  console.log(`🚀 API Engine running on port ${port}`);
+  await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
