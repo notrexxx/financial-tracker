@@ -4,17 +4,14 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Wallet, TrendingUp, ArrowDownRight, Activity, Eye } from 'lucide-react';
 import { SignedIn, SignedOut, SignIn, UserButton, useAuth } from '@clerk/clerk-react';
 
-// Hardcoded to your live Render backend (can be overridden by Vercel env variables later)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://financial-tracker-api-mf8f.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-// 1. Reusable Card Component
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
   <div className={`bg-surface border border-border rounded-xl shadow-sm p-6 ${className}`}>
     {children}
   </div>
 );
 
-// 2. The Unified, Pixel-Perfect Dashboard View
 const DashboardView = ({ data }: { data: any }) => {
   const { trends, categoryBreakdown } = data;
   const totalIncome = trends.reduce((sum: number, item: any) => sum + item.totalIncome, 0);
@@ -67,14 +64,16 @@ const DashboardView = ({ data }: { data: any }) => {
                     innerRadius={80} 
                     outerRadius={120} 
                     paddingAngle={5} 
-                    dataKey="totalAmount" 
+                    dataKey="totalAmount"
+                    nameKey="name"
                     stroke="none"
-                    // THE TS FIX: safely falling back to 0 if percent is undefined
-                    label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                   >
                     {categoryBreakdown.map((entry: any, i: number) => <Cell key={`cell-${i}`} fill={entry.color} />)}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} formatter={(v: any) => [`$${Number(v).toLocaleString()}`, 'Amount']} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} 
+                    formatter={(value: any, name: any) => [`$${Number(value).toLocaleString()}`, name]} 
+                  />
                   <Legend iconType="circle" layout="vertical" verticalAlign="bottom" />
                 </PieChart>
               </ResponsiveContainer>
@@ -85,7 +84,6 @@ const DashboardView = ({ data }: { data: any }) => {
   );
 };
 
-// 3. Main App Shell Orchestrator
 function App() {
   const [demoMode, setDemoMode] = useState(false);
   const { getToken, userId } = useAuth();
@@ -93,13 +91,11 @@ function App() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboardMetrics', demoMode ? 'demo' : userId],
     queryFn: async () => {
-      // Demo Mode API Call
       if (demoMode) {
         const res = await fetch(`${API_BASE_URL}/analytics/demo-dashboard`);
         if (!res.ok) throw new Error('Failed to fetch demo data');
         return res.json();
       }
-      // Secure Authenticated API Call
       const token = await getToken();
       const res = await fetch(`${API_BASE_URL}/analytics/dashboard`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -107,7 +103,6 @@ function App() {
       if (!res.ok) throw new Error('Failed to fetch secure data');
       return res.json();
     },
-    // The query remains disabled until Clerk provides an ID or Demo mode is clicked
     enabled: demoMode || !!userId,
   });
 
