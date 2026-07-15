@@ -8,6 +8,7 @@ import { Transaction } from './database/entities/transaction.entity';
 import { ExchangeRate } from './database/entities/exchange-rate.entity';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { TasksModule } from './tasks/tasks.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -28,17 +29,14 @@ import { TasksModule } from './tasks/tasks.module';
           type: 'postgres',
           url: databaseUrl,
           entities: [User, Category, Transaction, ExchangeRate],
-          
-          // CRITICAL SECURITY UPDATE: We now strictly rely on Migrations across ALL environments.
-          // This prevents TypeORM from accidentally dropping tables or columns.
           synchronize: false, 
-          
           ssl: {
             rejectUnauthorized: false,
           },
         };
       },
     }),
+    RedisModule, 
     AnalyticsModule,
     TasksModule,
   ],
