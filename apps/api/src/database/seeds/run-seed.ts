@@ -29,11 +29,13 @@ async function runSeed() {
     console.log('🧹 Clearing existing data...');
     await queryRunner.query(`TRUNCATE TABLE transactions, categories, users CASCADE;`);
 
-    console.log('👤 Generating Demo User...');
+    console.log('👤 Generating Admin User with Clerk Identity...');
     const userRepo = AppDataSource.getRepository(User);
+    
     const demoUser = await userRepo.save({
-      email: 'investor@portfolio.com',
-      passwordHash: 'hashed_password_mock',
+      id: 'user_3GHoR6yTlblgtvsIJFtdBhZtEcK',
+      email: 'admin@admin.com',
+      passwordHash: 'managed_by_clerk_oauth',
     });
 
     console.log('📂 Generating Categories...');

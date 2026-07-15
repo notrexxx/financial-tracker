@@ -1,26 +1,43 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
-import { GetAnalyticsDto } from './dto/get-analytics.dto';
+import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
-  @Get('dashboard')
-  async getDashboardMetrics(@Query() query: GetAnalyticsDto) {
-    // We execute both heavy database queries in parallel using Promise.all
-    // This cuts the response time in half compared to awaiting them sequentially.
+  @Get('demo-dashboard')
+  async getDemoDashboard() {
+    const demoUserId = 'demo-guest-user-123';
+    
+    await this.analyticsService.autoProvisionUser(demoUserId);
+    
     const [trends, categoryBreakdown] = await Promise.all([
-      this.analyticsService.getMonthlyTrends(query.userId),
-      this.analyticsService.getCategoryBreakdown(query.userId),
+      this.analyticsService.getMonthlyTrends(demoUserId),
+      this.analyticsService.getCategoryBreakdown(demoUserId),
     ]);
 
     return {
       success: true,
-      data: {
-        trends,
-        categoryBreakdown,
-      },
+      data: { trends, categoryBreakdown },
+    };
+  }
+
+  @UseGuards(ClerkAuthGuard)
+  @Get('dashboard')
+  async getDashboardMetrics(@Req() req: any) {
+    const secureUserId = req.user.id;
+    
+    await this.analyticsService.autoProvisionUser(secureUserId);
+
+    const [trends, categoryBreakdown] = await Promise.all([
+      this.analyticsService.getMonthlyTrends(secureUserId),
+      this.analyticsService.getCategoryBreakdown(secureUserId),
+    ]);
+
+    return {
+      success: true,
+      data: { trends, categoryBreakdown },
     };
   }
 }
